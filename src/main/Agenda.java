@@ -1,73 +1,76 @@
 package main;
 
-import java.net.UnknownHostException;
-import java.util.LinkedList;
-import java.util.List;
+import static main.DatabaseController.recuperarContatosPorNome;
+import static main.DatabaseController.recuperarTodosContatos;
+import static main.DatabaseController.salvarContato;
+import static main.DatabaseController.iniciarMongo;
+
 import java.util.Scanner;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.Mongo;
-import com.mongodb.MongoClient;
-
 /**
- * Exemplo de Agenda com Mongo
+ * Exemplo de Agenda com Mongo, curso de Arquitetura Web.
  * 
- * @author Vladwoguer Bezerra Date mm/dd/yyyy 09/30/2014
+ * @author Vladwoguer Bezerra / Sp-Lab 2014
  */
 public class Agenda {
-	private static final String COLECAO_AGENDA = "minhaAgenda";
-	private static final String BANCO = "test";
-	private static final String URL_MONGO = "localhost";
-	private static final int PORTA = 27017;
-	private static MongoClient banco;
-
 	public static void main(String[] args) {
-		Scanner teclado = new Scanner(System.in);
-		int controle;
 		try {
-			iniciarMongo();
-			do {
-				exibirMenu();
-				controle = teclado.nextInt();
-				switch (controle) {
-				case 1:
-					exibirContatos();
-					break;
-				case 2:
-					inserirContato();
-					break;
-				case 3:
-					System.out.println("Digite o nome do contato:");
-					buscarContato(getTeclado().nextLine());
-					break;
-
-				case 4:
-					;
-					break;
-
-				default:
-					System.out.println("Digite um valor válido");
-					break;
-				}
-			} while (controle != 4);
-
+			iniciarMongo(); /*
+							 * Aqui inicializa o banco verificando se ele está
+							 * disponível
+							 */
+			controleFluxo();
 		} catch (ConexaoIndisponivelException e) {
 			System.out.println("Erro 01: Favor verificar conexão com MongoDB");
 		}
 	}
 
+	/**
+	 * Lê do teclado a opção do usuário.
+	 */
+	private static void controleFluxo() {
+		int controle;
+		do {
+			exibirMenu();
+			controle = getTeclado().nextInt();
+			switch (controle) {
+			case 1:
+				exibirContatos();
+				break;
+			case 2:
+				inserirContato();
+				break;
+			case 3:
+				buscarContato();
+				break;
+
+			case 4:
+				; // para não exibir a msg caso digite 4
+				break;
+
+			default:
+				System.out.println("Digite um valor válido");
+				break;
+			}
+		} while (controle != 4);
+	}
+
 	// Metodos da interface texto
 
-	private static void buscarContato(String nome) {
+	/**
+	 * Busca o contato no banco.
+	 */
+	private static void buscarContato() {
+		System.out.println("Digite o nome do contato:");
+		String nome = getTeclado().nextLine();
 		for (Contato contato : recuperarContatosPorNome(nome)) {
 			System.out.println(contato.toString());
 		}
 	}
 
+	/**
+	 * Insere um contato.
+	 */
 	private static void inserirContato() {
 		System.out.println("Digite o nome do contato:");
 		String nome = getTeclado().nextLine();
@@ -78,77 +81,29 @@ public class Agenda {
 		salvarContato(new Contato(nome, telefone));
 	}
 
+	/**
+	 * Exibe todos os contatos.
+	 */
 	private static void exibirContatos() {
 		for (Contato contato : recuperarTodosContatos()) {
 			System.out.println(contato.toString());
 		}
 	}
 
+	/**
+	 * Retorna um scanner de teclado ou da entrada padrão.
+	 */
 	private static Scanner getTeclado() {
 		return new Scanner(System.in);
 	}
 
+	/**
+	 * Exibe o menu da aplicação.
+	 */
 	private static void exibirMenu() {
 		System.out.println("1-Listar Contatos");
 		System.out.println("2-Inserir Contato");
 		System.out.println("3-Buscar  Contato");
 		System.out.println("4 Sair");
-	}
-
-	// Metodos que Modificam o BD
-	
-	private static List<Contato> recuperarContatosPorNome(String nome) {
-		List<Contato> contatos = new LinkedList<Contato>();
-		BasicDBObject query = new BasicDBObject("nome", nome);
-		DBCursor cursor = getColecao().find(query);
-		try {
-			while (cursor.hasNext()) {
-				DBObject o = cursor.next();
-				contatos.add(new Contato((String) o.get("nome"), (String) o
-						.get("telefone")));
-			}
-		} finally {
-			cursor.close();
-		}
-		return contatos;
-	}
-
-	private static List<Contato> recuperarTodosContatos() {
-		List<Contato> contatos = new LinkedList<Contato>();
-		DBCursor cursor = getColecao().find();
-		try {
-			while (cursor.hasNext()) {
-				DBObject o = cursor.next();
-				contatos.add(new Contato((String) o.get("nome"), (String) o
-						.get("telefone")));
-			}
-		} finally {
-			cursor.close();
-		}
-		return contatos;
-	}
-
-	private static void salvarContato(Contato novoContato) {
-		DBCollection coll = getColecao();
-		BasicDBObject contato = new BasicDBObject("nome", novoContato.getNome())
-				.append("telefone", novoContato.getTelefone());
-		coll.insert(contato);
-	}
-
-	private static DBCollection getColecao() {
-		// Inicializa o Banco de dados
-		DB db = banco.getDB(BANCO);
-		DBCollection coll = db.getCollection(COLECAO_AGENDA);
-		return coll;
-	}
-
-	private static void iniciarMongo() throws ConexaoIndisponivelException {
-		try {
-			if (banco == null) {
-				banco = new MongoClient(URL_MONGO, PORTA);
-			}
-		} catch (UnknownHostException e) {
-			throw new ConexaoIndisponivelException();
-		}
 	}
 }
